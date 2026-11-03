@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Investment Allocation Survey</title>
+    <!-- Tailwind CSS for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex items-center justify-center p-4">
+
+    <div class="max-w-xl w-full bg-white rounded-2xl shadow-xl p-8 border border-slate-100">
+        
+        <!-- Header -->
+        <div class="mb-8 text-center">
+            <h1 class="text-2xl font-bold text-slate-900">Project Allocation Experiment</h1>
+            <p class="text-slate-500 text-sm mt-1">Distribute 100% of your funds across the eligible projects below.</p>
+        </div>
+
+        <div id="app">
+            <!-- Step 1: Select User Group -->
+            <div id="step-group" class="mb-6">
+                <label class="block text-sm font-semibold text-slate-700 mb-2">1. Select your home group:</label>
+                <select id="userGroup" class="w-full p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+                    <option value="Alpha">Project Alpha</option>
+                    <option value="Beta">Project Beta</option>
+                    <option value="Gamma">Project Gamma</option>
+                    <option value="Delta">Project Delta</option>
+                    <option value="Epsilon">Project Epsilon</option>
+                </select>
+            </div>
+
+            <!-- Step 2: Allocation Inputs -->
+            <div class="mb-6">
+                <label class="block text-sm font-semibold text-slate-700 mb-3">2. Allocate your percentages (excluding your own project):</label>
+                <div id="allocations-container" class="space-y-4">
+                    <!-- Dynamically populated via JavaScript -->
+                </div>
+            </div>
+
+            <!-- Summary & Validation Status -->
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6 flex items-center justify-between">
+                <div>
+                    <span class="text-sm font-medium text-slate-600">Total Allocated:</span>
+                    <span id="total-display" class="text-xl font-bold ml-2 text-indigo-600">0%</span>
+                </div>
+                <div id="validation-badge" class="text-xs font-semibold px-3 py-1 rounded-full bg-amber-100 text-amber-800">
+                    Must equal 100%
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <button id="submit-btn" disabled class="w-full py-3 px-4 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                Submit Allocation
+            </button>
+        </div>
+
+        <!-- Success Screen (Hidden by default) -->
+        <div id="success-screen" class="hidden text-center py-8">
+            <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">✓</div>
+            <h2 class="text-xl font-bold text-slate-900">Allocation Submitted Successfully!</h2>
+            <p class="text-slate-500 text-sm mt-2">Thank you for participating. Your response has been recorded.</p>
+            <button onclick="location.reload()" class="mt-6 text-sm text-indigo-600 font-semibold hover:underline">Reset Form</button>
+        </div>
+
+    </div>
+
+    <script>
+        const allProjects = ['Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon'];
+        const groupSelect = document.getElementById('userGroup');
+        const container = document.getElementById('allocations-container');
+        const totalDisplay = document.getElementById('total-display');
+        const validationBadge = document.getElementById('validation-badge');
+        const submitBtn = document.getElementById('submit-btn');
+        const appStep = document.getElementById('step-group');
+        const successScreen = document.getElementById('success-screen');
+
+        let currentAllocations = {};
+
+        function renderForm() {
+            const selectedGroup = groupSelect.value;
+            const eligibleProjects = allProjects.filter(p => p !== selectedGroup);
+
+            // Reset allocations for newly eligible projects
+            const newAllocations = {};
+            eligibleProjects.forEach(p => {
+                newAllocations[p] = currentAllocations[p] || 0;
+            });
+            currentAllocations = newAllocations;
+
+            // Render input rows
+            container.innerHTML = '';
+            eligibleProjects.forEach(project => {
+                const row = document.createElement('div');
+                row.className = 'flex items-center justify-between bg-white p-3 border border-slate-200 rounded-lg shadow-sm';
+                
+                row.innerHTML = `
+                    <span class="font-medium text-slate-700">Project ${project}</span>
+                    <div class="flex items-center space-x-2">
+                        <input type="number" min="0" max="100" value="${currentAllocations[project]}" data-project="${project}" 
+                            class="alloc-input w-24 p-2 text-right border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <span class="text-slate-500 font-medium">%</span>
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+
+            attachInputListeners();
+            calculateTotal();
+        }
+
+        function attachInputListeners() {
+            const inputs = document.querySelectorAll('.alloc-input');
+            inputs.forEach(input => {
+                input.addEventListener('input', (e) => {
+                    const proj = e.target.getAttribute('data-project');
+                    let val = parseInt(e.target.value) || 0;
+                    
+                    // Clamp value between 0 and 100
+                    if (val < 0) val = 0;
+                    if (val > 100) val = 100;
+                    
+                    currentAllocations[proj] = val;
+                    calculateTotal();
+                });
+            });
+        }
+
+        function calculateTotal() {
+            let total = 0;
+            for (let proj in currentAllocations) {
+                total += currentAllocations[proj];
+            }
+
+            totalDisplay.textContent = total + '%';
+
+            if (total === 100) {
+                totalDisplay.className = "text-xl font-bold ml-2 text-emerald-600";
+                validationBadge.className = "text-xs font-semibold px-3 py-1 rounded-full bg-emerald-100 text-emerald-800";
+                validationBadge.textContent = "Valid Total (100%)";
+                submitBtn.disabled = false;
+            } else {
+                totalDisplay.className = "text-xl font-bold ml-2 text-amber-600";
+                validationBadge.className = "text-xs font-semibold px-3 py-1 rounded-full bg-amber-100 text-amber-800";
+                validationBadge.textContent = total > 100 ? "Total exceeds 100%" : "Must equal 100%";
+                submitBtn.disabled = true;
+            }
+        }
+
+        groupSelect.addEventListener('change', renderForm);
+
+        submitBtn.addEventListener('click', () => {
+            // Handle submission logic here
+            document.getElementById('app').style.display = 'none';
+            successScreen.classList.remove('hidden');
+        });
+
+        // Initial render
+        renderForm();
+    </script>
+</body>
+</html>
